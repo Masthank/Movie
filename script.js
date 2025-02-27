@@ -1,51 +1,133 @@
-const fetchWeatherData = async (city) => {
-    const url = `https://yahoo-weather5.p.rapidapi.com/weather?format=json&u=f&location=${city}`;
-    const options = {
-        method: 'GET',
-        headers: {
-            'x-rapidapi-host': 'yahoo-weather5.p.rapidapi.com',
-            'x-rapidapi-key': '199b974457msh9144fe7d2af71aep1ac5cbjsn89cfe9ab2443'
-        }
-    };
-    
+const APILINK = "https://imdb236.p.rapidapi.com/imdb/top250-movies";
+const SEARCHAPI = "https://imdb-com.p.rapidapi.com/search?searchTerm=";
+
+
+// Select elements
+const main = document.getElementById("section");
+const form = document.getElementById("form");
+const search = document.getElementById("query");
+
+// Function to fetch and display movies
+async function returnMovies(url) {
     try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "x-rapidapi-host": "imdb236.p.rapidapi.com",
+                "x-rapidapi-key": "199b974457msh9144fe7d2af71aep1ac5cbjsn89cfe9ab2443"
+            }
+        });
+
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        const data = await response.json();
-        const { astronomy, condition, wind, atmosphere } = data.current_observation;
-        
-        document.getElementById("temp").innerHTML = condition.temperature;
-        document.getElementById("min_temp").innerHTML = data.forecasts[0].low;
-        document.getElementById("max_temp").innerHTML = data.forecasts[0].high;
-        document.getElementById("humid").innerHTML = atmosphere.humidity;
-        document.getElementById("sunrise").innerHTML = astronomy.sunrise;
-        document.getElementById("sunset").innerHTML = astronomy.sunset;
-        document.getElementById("wind").innerHTML = wind.speed;
-        document.getElementById("wind_degree").innerHTML = wind.direction;
-        document.getElementById("feels_like").innerHTML = condition.temperature;
 
-        let imgElement = document.getElementById('weather_image');
-        if (condition.temperature > 13) {
-            imgElement.src = '/images/sunny.jpeg'; 
-        } else if (condition.temperature <= 10 && wind.speed > 4.5) {
-            imgElement.src = '/images/windy.jpeg'; 
-        } else if (atmosphere.humidity > 80) {
-            imgElement.src = '/images/rainy.jpeg'; 
+        const data = await response.json();
+        console.log("API Response:", data); // Debugging output
+
+        // Ensure `data` is an array
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error("Invalid response format: No valid movies found");
         }
 
-        console.log('Weather Data:', data);
-    } catch (error) {
-        console.error('Error fetching weather data:', error);
-    }
-};
+        main.innerHTML = ""; // Clear previous results
 
-document.getElementById("searchForm").addEventListener("submit", (e) => {
+        // Loop through movies and create cards
+        data.forEach((movie) => {
+            if (!movie.id || !movie.primaryTitle) return; // Skip invalid entries
+
+            const div_card = document.createElement("div");
+            div_card.classList.add("card");
+
+            const image = document.createElement("img");
+            image.classList.add("thumbnail");
+            image.src = movie.primaryImage || "https://via.placeholder.com/300x450"; // Default image
+
+            const title = document.createElement("h3");
+            title.classList.add("movie-title");
+            title.innerText = movie.primaryTitle || "No Title Available";
+
+            div_card.appendChild(image);
+            div_card.appendChild(title);
+            main.appendChild(div_card);
+        });
+
+    } catch (err) {
+        console.error("Error fetching movies:", err);
+    }
+}
+
+// Fetch IMDb Movies by default
+returnMovies(APILINK);
+
+// Event listener for search form
+form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const searchItem = document.getElementById("search").value;
-    document.getElementById("city_name").innerHTML = searchItem.toUpperCase();
+    const searchItem = search.value.trim();
     if (searchItem) {
-        fetchWeatherData(searchItem);
+        returnMovies(SEARCHAPI + encodeURIComponent(searchItem));
+    } else {
+        returnMovies(APILINK);
+    }
+});
+
+async function returnMoviesSearch(query) {
+    try {
+        const url = SEARCHAPI + encodeURIComponent(query);
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {
+                "x-rapidapi-host": "imdb-com.p.rapidapi.com",
+                "x-rapidapi-key": "199b974457msh9144fe7d2af71aep1ac5cbjsn89cfe9ab2443"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("API Response:", data); // Debugging output
+
+        // Check if the data contains search results
+        if (!data.data || !data.data.mainSearch || !data.data.mainSearch.edges) {
+            throw new Error("No valid movies found");
+        }
+
+        main.innerHTML = ""; // Clear previous results
+
+        // Loop through movies and create cards
+        data.data.mainSearch.edges.forEach(({ node }) => {
+            if (!node || !node.entity || !node.entity.titleText) return;
+
+            const movie = node.entity;
+
+            const div_card = document.createElement("div");
+            div_card.classList.add("card");
+
+            const image = document.createElement("img");
+            image.classList.add("thumbnail");
+            image.src = movie.primaryImage?.url || "https://via.placeholder.com/300x450"; // Default image
+
+            const title = document.createElement("h3");
+            title.classList.add("movie-title");
+            title.innerText = movie.titleText.text || "No Title Available";
+
+            div_card.appendChild(image);
+            div_card.appendChild(title);
+            main.appendChild(div_card);
+        });
+
+    } catch (err) {
+        console.error("Error fetching movies:", err);
+    }
+}
+
+// Event listener for search form
+form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const searchItem = search.value.trim();
+    if (searchItem) {
+        returnMoviesSearch(searchItem);
     }
 });
